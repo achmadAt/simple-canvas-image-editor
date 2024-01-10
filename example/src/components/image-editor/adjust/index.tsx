@@ -16,15 +16,6 @@ export default function AdjustMain(props: AdjustMainProps) {
   const [value, setValue] = React.useState<AdjustProps>(defaultValueAdjust)
 
   const onChange = async (name: string, newValue: number) => {
-    if (cvs) {
-      const canvas = document.getElementById("canvas") as HTMLCanvasElement
-      if (canvas) {
-        let I = cvs.result
-        if (I) {
-          I.brightness(newValue, canvas).render(canvas)
-        }
-      }
-    }
 
     setValue((pre) => ({
       ...pre,
@@ -32,39 +23,24 @@ export default function AdjustMain(props: AdjustMainProps) {
     }))
   }
 
-  // useEffect(() => {
-  //   if (cvs) {
-  //     const canvas = document.getElementById("canvas") as HTMLCanvasElement
-  //     if (canvas) {
-  //       let I = cvs.result
-  //       if (I) {
-  //         I.exposure(value.exposure)
-  //           .brightness(value.brightness)
-  //           .hightlight(value.hightlight)
-  //           .shadow(value.shadows)
-  //           // .white(value.whites)
-  //           .black(value.blacks)
-  //           .temperature(value.temperature)
-  //           .tint(value.tint)
-  //           .saturationRGB(value.saturation)
-  //           .contrast(value.contrast)
-  //           .clarity(value.clarity)
-  //           .clip(value.clip)
-  //           .noise(value.noise)
-  //           .gamma(value.gamma)
-  //           .hue(value.hue)
-  //           .sepia(value.sepia)
-  //           .sharpness(value.sharpness)
-  //           .render(canvas)
-
-  //         // this is bug when white value give a change image
-  //         if (value.whites !== 0) {
-  //           I.white(value.whites).render(canvas)
-  //         }
-  //       }
-  //     }
-  //   }
-  // }, [value])
+  useEffect(() => {
+    if (cvs) {
+      const canvas = document.getElementById("canvas") as HTMLCanvasElement
+      if (canvas) {
+        let I = cvs.result
+        if (I) {
+          I.adjustOpenCV({
+            brightness: value.brightness,
+            exposure: value.exposure,
+            contrast: value.contrast,
+            temperature: value.temperature,
+            hightlight : value.hightlight,
+            cvsId : "canvas"
+          })
+        }
+      }
+    }
+  }, [value])
 
   return (
     <>

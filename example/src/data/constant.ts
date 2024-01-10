@@ -13,31 +13,21 @@ const defaultValueAdjust: AdjustProps = {
   contrast: 0,
   clarity: 0,
   sharpness: 0,
-  clip: 0,
-  noise: 0,
-  gamma: 0,
-  hue: 0,
-  sepia: 0,
 }
 
 const minMaxSlider: { [key: string]: { min: number; max: number } } = {
   exposure: { min: -100, max: 100 },
   brightness: { min: -100, max: 100 },
-  hightlight: { min: -50, max: 50 },
-  shadows: { min: -50, max: 50 },
-  whites: { min: -50, max: 50 },
-  blacks: { min: -50, max: 50 },
+  hightlight: { min: -100, max: 100 },
+  shadows: { min: -100, max: 100 },
+  whites: { min: -100, max: 100 },
+  blacks: { min: -100, max: 100 },
   temperature: { min: -100, max: 100 },
   saturation: { min: -100, max: 100 },
   tint: { min: -100, max: 100 },
-  contrast: { min: -20, max: 20 },
-  clarity: { min: 0, max: 100 },
-  sharpness: { min: 0, max: 100 },
-  clip: { min: 0, max: 100 },
-  noise: { min: 0, max: 100 },
-  gamma: { min: 0, max: 100 },
-  hue: { min: 0, max: 100 },
-  sepia: { min: 0, max: 100 },
+  contrast: { min: 100, max: 100 },
+  clarity: { min: 100, max: 100 },
+  sharpness: { min: 100, max: 100 },
 }
 
 const moreActionButton = [
@@ -105,16 +95,6 @@ const ItemAdjust = [
       {
         name: "Sharpness",
       },
-    ],
-  },
-  {
-    title: "Others",
-    content: [
-      { name: "Clip" },
-      { name: "Noise" },
-      { name: "Gamma" },
-      { name: "Sepia" },
-      { name: "Hue" },
     ],
   },
   {

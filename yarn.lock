@@ -1063,10 +1063,10 @@
   resolved "https://registry.yarnpkg.com/@swc/types/-/types-0.1.5.tgz#043b731d4f56a79b4897a3de1af35e75d56bc63a"
   integrity sha512-myfUej5naTBWnqOCc/MdVOLVjXUXtIA+NpDrDBKJtLLg2shUjBu3cZmB/85RyitKc55+lUUyl7oRfLOvkr2hsw==
 
-"@techstark/opencv-js@^4.8.0-release.9":
-  version "4.8.0-release.9"
-  resolved "https://registry.yarnpkg.com/@techstark/opencv-js/-/opencv-js-4.8.0-release.9.tgz#d9ce7404925cd9cd95f2e01131eebf571ac6785f"
-  integrity sha512-syJT03sZJCxRko6XoVK60tn8L/5t1RIqnTqsfQn+uTN70FkIJg+BdsVB2gjCI8ksSrk4odKJsS6ySVK8GU95cQ==
+"@techstark/opencv-js@^4.8.0-release.10":
+  version "4.8.0-release.10"
+  resolved "https://registry.yarnpkg.com/@techstark/opencv-js/-/opencv-js-4.8.0-release.10.tgz#0f97693dbd9028272a4ead38d40dbc5af0da0250"
+  integrity sha512-tzo3aYj8toHCB1A0Mui41u+Shulu/pCoZufKTNu32YoSBksHB/OfAd533NajW4FSC+/rh6WOgkI6c7obpuarwg==
 
 "@types/babel__core@^7.1.14":
   version "7.20.3"
@@ -3901,13 +3901,6 @@ open@^9.1.0:
     is-inside-container "^1.0.0"
     is-wsl "^2.2.0"
 
-opencv-ts@^1.3.6:
-  version "1.3.6"
-  resolved "https://registry.yarnpkg.com/opencv-ts/-/opencv-ts-1.3.6.tgz#2242f2c051be272861edc8d7d6ab18b590f842f3"
-  integrity sha512-8iG+ujpzsvc5W7vP0WH0TFUOODZFulp7SBzy2Av2xXmHrHVKw7HWKyutLxmstAkNa7nD6BgnDrEVxTsI/mDkeQ==
-  dependencies:
-    typescript "^4.2.3"
-
 optionator@^0.9.3:
   version "0.9.3"
   resolved "https://registry.yarnpkg.com/optionator/-/optionator-0.9.3.tgz#007397d44ed1872fdc6ed31360190f81814e2c64"
@@ -4839,11 +4832,6 @@ typed-array-length@^1.0.4:
     call-bind "^1.0.2"
     for-each "^0.3.3"
     is-typed-array "^1.1.9"
-
-typescript@^4.2.3:
-  version "4.9.5"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.9.5.tgz#095979f9bcc0d09da324d58d03ce8f8374cbe65a"
-  integrity sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==
 
 typescript@^5.2.2:
   version "5.2.2"

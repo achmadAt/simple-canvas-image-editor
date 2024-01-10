@@ -8,11 +8,6 @@ export interface AdjustProps {
   temperature: number
   saturation: number
   tint: number
-  clip: number
-  noise: number
-  gamma: number
-  hue: number
-  sepia: number
   contrast: number
   clarity: number
   sharpness: number

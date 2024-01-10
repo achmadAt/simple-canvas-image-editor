@@ -1,3 +1,5 @@
+import cv from '@techstark/opencv-js';
+
 declare class Color {
     r: number;
     g: number;
@@ -29,16 +31,24 @@ declare class RGBAImage {
     clamp: (num: number, min: number, max: number) => number;
     isWhite(r: number, g: number, b: number): boolean;
     isBlacks(r: number, g: number, b: number): boolean;
-    exposure(value: number): RGBAImage;
-    brightness(value: number, canvas: HTMLCanvasElement): RGBAImage;
-    hightlight(value: number): RGBAImage;
+    temperature(value: number, src: cv.Mat): cv.Mat;
+    exposure(value: number, src: cv.Mat): cv.Mat;
+    hightlight(value: number, src: cv.Mat): cv.Mat;
+    brightness(value: number, src: cv.Mat): cv.Mat;
+    contrast(value: number, src: cv.Mat): cv.Mat;
+    adjustOpenCV(param: {
+        brightness: number;
+        exposure: number;
+        contrast: number;
+        temperature: number;
+        hightlight: number;
+        cvsId: string;
+    }): void;
     shadow(value: number): RGBAImage;
     white(value: number): RGBAImage;
     black(value: number): RGBAImage;
     tint(value: number): RGBAImage;
-    temperature(value: number): RGBAImage;
     saturationRGB(value: number): RGBAImage;
-    contrast(value: number): RGBAImage;
     hue(value: number): RGBAImage;
     gamma(value: number): RGBAImage;
     sepia(value: number): RGBAImage;

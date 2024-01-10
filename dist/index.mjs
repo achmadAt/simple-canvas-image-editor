@@ -324,7 +324,7 @@ function hsvToRgb(h, s, v) {
 }
 
 // src/lib/color.ts
-import cv from "opencv-ts";
+import cv from "@techstark/opencv-js";
 var Color = class _Color {
   constructor(r, g, b, a) {
     this.r = r;
@@ -557,62 +557,109 @@ var RGBAImage = class _RGBAImage {
     return false;
   }
   //image adjustment filter
-  exposure(value) {
-    const exposureFactor = 2 ** (value / 100);
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-      r = Math.min(255, Math.max(0, Math.floor(r * exposureFactor)));
-      g = Math.min(255, Math.max(0, Math.floor(g * exposureFactor)));
-      b = Math.min(255, Math.max(0, Math.floor(b * exposureFactor)));
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-      return data;
-    });
-    return dst;
-  }
-  brightness(value, canvas) {
-    let src = cv.matFromImageData(this.imageData);
-    let _dst = new cv.Mat();
-    let alpha = 1 + value / 200;
-    let beta = 0;
-    cv.convertScaleAbs(src, _dst, alpha, beta);
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      data[idx] = _dst.data[idx];
-      ++idx;
-      data[idx] = _dst.data[idx];
-      ++idx;
-      data[idx] = _dst.data[idx];
-      return data;
-    });
-    return dst;
-  }
-  hightlight(value) {
-    value /= 100;
-    let src = cv.matFromImageData(this.imageData);
-    let _dst = new cv.Mat();
-    cv.cvtColor(src, _dst, cv.COLOR_BGR2Lab);
-    console.log(_dst.data, "dst");
-    let channels = new cv.MatVector();
-    cv.split(_dst, channels);
-    let l = channels.get(0);
-    let a = channels.get(1);
-    let b = channels.get(2);
-    let newTest = cv.matFromArray(src.rows, src.cols, cv.CV_8UC1, [l, a, b]);
-    console.log(newTest);
-    for (let i = 0; i < l.rows; i++) {
-      for (let j = 0; j < l.cols; j++) {
-        l.data[i * l.cols + j] = Math.min(255, Math.max(0, l.data[i * l.cols + j] * (1 + value)));
+  //temperature
+  temperature(value, src) {
+    value /= 2;
+    for (let i = 0; i < src.rows; i++) {
+      for (let j = 0; j < src.cols; j++) {
+        src.ptr(i, j)[0] = Math.min(Math.max(src.ptr(i, j)[0] + value, 0), 255);
+        src.ptr(i, j)[2] = Math.min(Math.max(src.ptr(i, j)[2] - value, 0), 255);
       }
     }
-    let adjustedImage = new cv.Mat();
-    cv.merge(channels, adjustedImage);
-    let labToBgr = new cv.Mat();
-    cv.cvtColor(adjustedImage, labToBgr, cv.COLOR_Lab2BGR);
-    const dst = new _RGBAImage(this.w, this.h, labToBgr.data.slice());
-    return dst;
+    return src;
+  }
+  exposure(value, src) {
+    const rows = src.rows;
+    const cols = src.cols;
+    const channels = src.channels();
+    if (value > 0) {
+      value /= 110;
+    }
+    if (value < 0) {
+      value /= 20;
+    }
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        for (let c = 0; c < channels; c++) {
+          const pixel = src.ucharPtr(y, x)[c];
+          const adjustedPixel = Math.min(
+            255,
+            Math.round(255 * Math.pow(pixel / 255, value * -1 + 1))
+          );
+          src.ucharPtr(y, x)[c] = adjustedPixel;
+        }
+      }
+    }
+    console.log({
+      "src": src.data
+    });
+    return src;
+  }
+  hightlight(value, src) {
+    value /= 500;
+    let labImage = new cv.Mat();
+    cv.cvtColor(src, labImage, cv.COLOR_BGR2Lab);
+    for (let i = 0; i < labImage.rows; i++) {
+      for (let j = 0; j < labImage.cols; j++) {
+        labImage.ucharPtr(i, j)[0] = Math.max(
+          0,
+          Math.min(255, labImage.ucharPtr(i, j)[0] * (1 + value))
+        );
+      }
+    }
+    let bgr = new cv.Mat();
+    cv.cvtColor(labImage, bgr, cv.COLOR_Lab2BGR);
+    for (let i = 0; i < src.rows; i++) {
+      for (let j = 0; j < src.cols; j++) {
+        src.ucharPtr(i, j)[0] = bgr.ucharPtr(i, j)[0];
+        src.ucharPtr(i, j)[1] = bgr.ucharPtr(i, j)[1];
+        src.ucharPtr(i, j)[2] = bgr.ucharPtr(i, j)[2];
+      }
+    }
+    return src;
+  }
+  brightness(value, src) {
+    for (let i = 0; i < src.rows; i++) {
+      for (let j = 0; j < src.cols; j++) {
+        src.ucharPtr(i, j)[0] = Math.max(
+          0,
+          Math.min(255, src.ucharPtr(i, j)[0] + value)
+        );
+        src.ucharPtr(i, j)[1] = Math.max(
+          0,
+          Math.min(255, src.ucharPtr(i, j)[1] + value)
+        );
+        src.ucharPtr(i, j)[2] = Math.max(
+          0,
+          Math.min(255, src.ucharPtr(i, j)[2] + value)
+        );
+      }
+    }
+    return src;
+  }
+  contrast(value, src) {
+    let dst = new cv.Mat();
+    let alpha = 1 + value / 50;
+    let beta = 128 - alpha * 128;
+    cv.convertScaleAbs(src, dst, alpha, beta);
+    for (let i = 0; i < src.rows; i++) {
+      for (let j = 0; j < src.cols; j++) {
+        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+      }
+    }
+    return src;
+  }
+  adjustOpenCV(param) {
+    const { brightness, exposure, contrast, temperature, hightlight, cvsId } = param;
+    let src = cv.matFromImageData(this.imageData);
+    this.brightness(brightness, src);
+    this.exposure(exposure, src);
+    this.contrast(contrast, src);
+    this.temperature(temperature, src);
+    this.hightlight(hightlight, src);
+    cv.imshow(cvsId, src);
   }
   shadow(value) {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
@@ -689,26 +736,6 @@ var RGBAImage = class _RGBAImage {
     });
     return dst;
   }
-  //temperature
-  temperature(value) {
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, b } = this.getPixel(x, y);
-      const { g } = this.getPixel(x, y);
-      let red = r;
-      let blue = b;
-      red = r + value;
-      blue = b - value;
-      r = Math.min(255, Math.max(0, red));
-      b = Math.min(255, Math.max(0, blue));
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-      return data;
-    });
-    return dst;
-  }
   saturationRGB(value) {
     const saturationCorrection = value * -0.01;
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
@@ -733,16 +760,6 @@ var RGBAImage = class _RGBAImage {
     return dst;
   }
   // Detail
-  contrast(value) {
-    let src = cv.matFromImageData(this.imageData);
-    let _dst = new cv.Mat();
-    let alpha = 1 + value / 100;
-    let beta = 128 - alpha * 128;
-    console.log(alpha, beta, "value");
-    cv.convertScaleAbs(src, _dst, alpha, beta);
-    const dst = new _RGBAImage(this.w, this.h, _dst.data.slice());
-    return dst;
-  }
   hue(value) {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);

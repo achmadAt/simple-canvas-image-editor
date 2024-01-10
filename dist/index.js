@@ -509,7 +509,7 @@ function hsvToRgb(h, s, v) {
     };
 }
 // src/lib/color.ts
-var import_opencv_ts = __toESM(require("opencv-ts"));
+var import_opencv_js = __toESM(require("@techstark/opencv-js"));
 var Color = /*#__PURE__*/ function() {
     function _Color(r, g, b, a) {
         _class_call_check(this, _Color);
@@ -775,74 +775,110 @@ var RGBAImage = /*#__PURE__*/ function() {
         },
         {
             //image adjustment filter
-            key: "exposure",
-            value: function exposure(value) {
-                var _this = this;
-                var exposureFactor = Math.pow(2, value / 100);
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    r = Math.min(255, Math.max(0, Math.floor(r * exposureFactor)));
-                    g = Math.min(255, Math.max(0, Math.floor(g * exposureFactor)));
-                    b = Math.min(255, Math.max(0, Math.floor(b * exposureFactor)));
-                    data[idx] = r;
-                    ++idx;
-                    data[idx] = g;
-                    ++idx;
-                    data[idx] = b;
-                    return data;
-                });
-                return dst;
+            //temperature
+            key: "temperature",
+            value: function temperature(value, src) {
+                value /= 2;
+                for(var i = 0; i < src.rows; i++){
+                    for(var j = 0; j < src.cols; j++){
+                        src.ptr(i, j)[0] = Math.min(Math.max(src.ptr(i, j)[0] + value, 0), 255);
+                        src.ptr(i, j)[2] = Math.min(Math.max(src.ptr(i, j)[2] - value, 0), 255);
+                    }
+                }
+                return src;
             }
         },
         {
-            key: "brightness",
-            value: function brightness(value, canvas) {
-                var src = import_opencv_ts.default.matFromImageData(this.imageData);
-                var _dst = new import_opencv_ts.default.Mat();
-                var alpha = 1 + value / 200;
-                var beta = 0;
-                import_opencv_ts.default.convertScaleAbs(src, _dst, alpha, beta);
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    data[idx] = _dst.data[idx];
-                    ++idx;
-                    data[idx] = _dst.data[idx];
-                    ++idx;
-                    data[idx] = _dst.data[idx];
-                    return data;
+            key: "exposure",
+            value: function exposure(value, src) {
+                var rows = src.rows;
+                var cols = src.cols;
+                var channels = src.channels();
+                if (value > 0) {
+                    value /= 110;
+                }
+                if (value < 0) {
+                    value /= 20;
+                }
+                for(var y = 0; y < rows; y++){
+                    for(var x = 0; x < cols; x++){
+                        for(var c = 0; c < channels; c++){
+                            var pixel = src.ucharPtr(y, x)[c];
+                            var adjustedPixel = Math.min(255, Math.round(255 * Math.pow(pixel / 255, value * -1 + 1)));
+                            src.ucharPtr(y, x)[c] = adjustedPixel;
+                        }
+                    }
+                }
+                console.log({
+                    "src": src.data
                 });
-                return dst;
+                return src;
             }
         },
         {
             key: "hightlight",
-            value: function hightlight(value) {
-                value /= 100;
-                var src = import_opencv_ts.default.matFromImageData(this.imageData);
-                var _dst = new import_opencv_ts.default.Mat();
-                import_opencv_ts.default.cvtColor(src, _dst, import_opencv_ts.default.COLOR_BGR2Lab);
-                console.log(_dst.data, "dst");
-                var channels = new import_opencv_ts.default.MatVector();
-                import_opencv_ts.default.split(_dst, channels);
-                var l = channels.get(0);
-                var a = channels.get(1);
-                var b = channels.get(2);
-                var newTest = import_opencv_ts.default.matFromArray(src.rows, src.cols, import_opencv_ts.default.CV_8UC1, [
-                    l,
-                    a,
-                    b
-                ]);
-                console.log(newTest);
-                for(var i = 0; i < l.rows; i++){
-                    for(var j = 0; j < l.cols; j++){
-                        l.data[i * l.cols + j] = Math.min(255, Math.max(0, l.data[i * l.cols + j] * (1 + value)));
+            value: function hightlight(value, src) {
+                value /= 500;
+                var labImage = new import_opencv_js.default.Mat();
+                import_opencv_js.default.cvtColor(src, labImage, import_opencv_js.default.COLOR_BGR2Lab);
+                for(var i = 0; i < labImage.rows; i++){
+                    for(var j = 0; j < labImage.cols; j++){
+                        labImage.ucharPtr(i, j)[0] = Math.max(0, Math.min(255, labImage.ucharPtr(i, j)[0] * (1 + value)));
                     }
                 }
-                var adjustedImage = new import_opencv_ts.default.Mat();
-                import_opencv_ts.default.merge(channels, adjustedImage);
-                var labToBgr = new import_opencv_ts.default.Mat();
-                import_opencv_ts.default.cvtColor(adjustedImage, labToBgr, import_opencv_ts.default.COLOR_Lab2BGR);
-                var dst = new _RGBAImage(this.w, this.h, labToBgr.data.slice());
-                return dst;
+                var bgr = new import_opencv_js.default.Mat();
+                import_opencv_js.default.cvtColor(labImage, bgr, import_opencv_js.default.COLOR_Lab2BGR);
+                for(var i1 = 0; i1 < src.rows; i1++){
+                    for(var j1 = 0; j1 < src.cols; j1++){
+                        src.ucharPtr(i1, j1)[0] = bgr.ucharPtr(i1, j1)[0];
+                        src.ucharPtr(i1, j1)[1] = bgr.ucharPtr(i1, j1)[1];
+                        src.ucharPtr(i1, j1)[2] = bgr.ucharPtr(i1, j1)[2];
+                    }
+                }
+                return src;
+            }
+        },
+        {
+            key: "brightness",
+            value: function brightness(value, src) {
+                for(var i = 0; i < src.rows; i++){
+                    for(var j = 0; j < src.cols; j++){
+                        src.ucharPtr(i, j)[0] = Math.max(0, Math.min(255, src.ucharPtr(i, j)[0] + value));
+                        src.ucharPtr(i, j)[1] = Math.max(0, Math.min(255, src.ucharPtr(i, j)[1] + value));
+                        src.ucharPtr(i, j)[2] = Math.max(0, Math.min(255, src.ucharPtr(i, j)[2] + value));
+                    }
+                }
+                return src;
+            }
+        },
+        {
+            key: "contrast",
+            value: function contrast(value, src) {
+                var dst = new import_opencv_js.default.Mat();
+                var alpha = 1 + value / 50;
+                var beta = 128 - alpha * 128;
+                import_opencv_js.default.convertScaleAbs(src, dst, alpha, beta);
+                for(var i = 0; i < src.rows; i++){
+                    for(var j = 0; j < src.cols; j++){
+                        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+                        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+                        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+                    }
+                }
+                return src;
+            }
+        },
+        {
+            key: "adjustOpenCV",
+            value: function adjustOpenCV(param) {
+                var brightness = param.brightness, exposure = param.exposure, contrast = param.contrast, temperature = param.temperature, hightlight = param.hightlight, cvsId = param.cvsId;
+                var src = import_opencv_js.default.matFromImageData(this.imageData);
+                this.brightness(brightness, src);
+                this.exposure(exposure, src);
+                this.contrast(contrast, src);
+                this.temperature(temperature, src);
+                this.hightlight(hightlight, src);
+                import_opencv_js.default.imshow(cvsId, src);
             }
         },
         {
@@ -937,30 +973,6 @@ var RGBAImage = /*#__PURE__*/ function() {
             }
         },
         {
-            //temperature
-            key: "temperature",
-            value: function temperature(value) {
-                var _this = this;
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, b = _this_getPixel.b;
-                    var g = _this.getPixel(x, y).g;
-                    var red = r;
-                    var blue = b;
-                    red = r + value;
-                    blue = b - value;
-                    r = Math.min(255, Math.max(0, red));
-                    b = Math.min(255, Math.max(0, blue));
-                    data[idx] = r;
-                    ++idx;
-                    data[idx] = g;
-                    ++idx;
-                    data[idx] = b;
-                    return data;
-                });
-                return dst;
-            }
-        },
-        {
             key: "saturationRGB",
             value: function saturationRGB(value) {
                 var _this = this;
@@ -986,19 +998,6 @@ var RGBAImage = /*#__PURE__*/ function() {
         },
         {
             // Detail
-            key: "contrast",
-            value: function contrast(value) {
-                var src = import_opencv_ts.default.matFromImageData(this.imageData);
-                var _dst = new import_opencv_ts.default.Mat();
-                var alpha = 1 + value / 100;
-                var beta = 128 - alpha * 128;
-                console.log(alpha, beta, "value");
-                import_opencv_ts.default.convertScaleAbs(src, _dst, alpha, beta);
-                var dst = new _RGBAImage(this.w, this.h, _dst.data.slice());
-                return dst;
-            }
-        },
-        {
             key: "hue",
             value: function hue(value) {
                 var _this = this;
