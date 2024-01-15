@@ -10,7 +10,7 @@ export default function ImageEditor() {
     const loader = new CanvasImageEdit()
     const canvas = document.getElementById("canvas") as HTMLCanvasElement
 
-    loader.ImageLoader(canvas, "/img10.jpg")
+    loader.ImageLoader(canvas, "/input.jpeg")
     loader.result?.render(canvas)
 
     setCanvasImage(loader)
@@ -57,7 +57,7 @@ export default function ImageEditor() {
             alignItems="flex-start"
           >
             <div id="ubersnap-editor"></div>
-            <canvas id="canvas" />
+            <canvas id="canvas" height={500} width={400} />
           </Grid>
           <Grid
             item

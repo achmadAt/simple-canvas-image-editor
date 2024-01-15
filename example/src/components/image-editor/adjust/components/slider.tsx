@@ -10,7 +10,7 @@ export default function SliderComponent(props: SliderProps) {
     value[name as keyof AdjustProps]
   )
 
-  const handleChange = (_event: Event, newValue: number | number[]) => {
+  const handleChange = (_event: Event, newValue: number | number[], ) => {
     if (typeof newValue === "number") {
       setSlider(newValue)
       onChange(name, newValue)

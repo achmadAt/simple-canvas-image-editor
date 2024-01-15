@@ -2,7 +2,6 @@
 /* eslint-disable no-plusplus */
 
 import Calculate from './calculate';
-import { hsvToRgb, rgbToHsv } from './convert';
 import cv, { Mat } from '@techstark/opencv-js';
 class Color {
   r: number;
@@ -326,11 +325,11 @@ export class RGBAImage {
     const rows = src.rows;
     const cols = src.cols;
     const channels = src.channels();
-    if(value > 0) {
-      value /= 110
+    if (value > 0) {
+      value /= 110;
     }
     if (value < 0) {
-      value /= 20
+      value /= 20;
     }
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
@@ -344,9 +343,6 @@ export class RGBAImage {
         }
       }
     }
-    console.log({
-      "src": src.data
-    })
     return src;
   }
   hightlight(value: number, src: cv.Mat) {
@@ -394,9 +390,108 @@ export class RGBAImage {
   }
   contrast(value: number, src: cv.Mat) {
     let dst = new cv.Mat();
-    let alpha = 1 + value / 50;
+    let alpha = 1 + value / 200;
     let beta = 128 - alpha * 128;
     cv.convertScaleAbs(src, dst, alpha, beta);
+    return dst;
+  }
+
+  shadow(value: number, src: cv.Mat) {
+    value /= 2;
+    let labImage = new cv.Mat();
+    cv.cvtColor(src, labImage, cv.COLOR_BGR2Lab);
+    for (let i = 0; i < labImage.rows; i++) {
+      for (let j = 0; j < labImage.cols; j++) {
+        labImage.ucharPtr(i, j)[0] = Math.min(
+          255,
+          Math.max(0, labImage.ucharPtr(i, j)[0] + value),
+        );
+      }
+    }
+    let dst = new cv.Mat();
+    cv.cvtColor(labImage, dst, cv.COLOR_Lab2BGR);
+    for (let i = 0; i < src.rows; i++) {
+      for (let j = 0; j < src.cols; j++) {
+        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+      }
+    }
+    return src;
+  }
+
+  white(value: number, src: cv.Mat) {
+    value /= 400;
+    let labImage = new cv.Mat();
+    cv.cvtColor(src, labImage, cv.COLOR_BGR2Lab);
+    for (let i = 0; i < labImage.rows; i++) {
+      for (let j = 0; j < labImage.cols; j++) {
+        labImage.ucharPtr(i, j)[0] = Math.min(
+          255,
+          Math.max(0, labImage.ucharPtr(i, j)[0] * (1 + value)),
+        );
+      }
+    }
+    let dst = new cv.Mat();
+    cv.cvtColor(labImage, dst, cv.COLOR_Lab2BGR);
+    for (let i = 0; i < src.rows; i++) {
+      for (let j = 0; j < src.cols; j++) {
+        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+      }
+    }
+    return src;
+  }
+  calculateMean(numbers: number[]): number {
+    /**
+     * Calculates the mean of a list of numbers.
+     *
+     * @param {number[]} numbers - A list of numbers.
+     * @returns {number} The mean of the list of numbers.
+     */
+    let total = 0;
+    for (const number of numbers) {
+      total += number;
+    }
+    const mean = total / numbers.length;
+    return mean;
+  }
+
+  black(value: number, src: cv.Mat) {
+    let labImage = new cv.Mat();
+    cv.cvtColor(src, labImage, cv.COLOR_BGR2Lab);
+    let numbers: number[] = [];
+
+    for (let i = 0; i < labImage.rows; i++) {
+      for (let j = 0; j < labImage.cols; j++) {
+        numbers.push(labImage.ucharPtr(i, j)[0]);
+      }
+    }
+    const threshold = this.calculateMean(numbers);
+    for (let i = 0; i < labImage.rows; i++) {
+      for (let j = 0; j < labImage.cols; j++) {
+        if (value > 0) {
+          if (labImage.ucharPtr(i, j)[0] < threshold) {
+            labImage.ucharPtr(i, j)[0] = Math.max(
+              0,
+              labImage.ucharPtr(i, j)[0] -
+                (threshold - labImage.ucharPtr(i, j)[0]) * value,
+            );
+          }
+        } else if (value < 0) {
+          if (labImage.ucharPtr(i, j)[0] < threshold) {
+            labImage.ucharPtr(i, j)[0] = Math.min(
+              255,
+              labImage.ucharPtr(i, j)[0] -
+                (threshold - labImage.ucharPtr(i, j)[0]) * value,
+            );
+          }
+        }
+      }
+    }
+    let dst = new cv.Mat();
+    cv.cvtColor(labImage, dst, cv.COLOR_Lab2BGR);
     for (let i = 0; i < src.rows; i++) {
       for (let j = 0; j < src.cols; j++) {
         src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
@@ -413,88 +508,32 @@ export class RGBAImage {
     contrast: number;
     temperature: number;
     hightlight: number;
+    shadow: number;
+    white: number;
+    black: number;
     cvsId: string;
   }) {
-    const {brightness, exposure, contrast, temperature, hightlight, cvsId} = param
+    const {
+      brightness,
+      exposure,
+      contrast,
+      temperature,
+      hightlight,
+      shadow,
+      white,
+      black,
+      cvsId,
+    } = param;
     let src = cv.matFromImageData(this.imageData);
-    this.brightness(brightness, src);
-    this.exposure(exposure, src);
-    this.contrast(contrast, src);
-    this.temperature(temperature, src);
-    this.hightlight(hightlight, src);
-    cv.imshow(cvsId, src);
-  }
-
-  shadow(value: number) {
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-      const maxFactor = 200;
-
-      const brightness = this.calculateBrightness(r, g, b);
-      if (brightness < maxFactor) {
-        //const adjustedBrightness = brightness + value * (brightness - 255);
-        // const pixelNew = Math.max(adjustedBrightness, 255);
-        r = this.clamp(r - value, 0, 255);
-        g = this.clamp(g - value, 0, 255);
-        b = this.clamp(b - value, 0, 255);
-      }
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
-    return dst;
-  }
-
-  white(value: number) {
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-      let luminance = this.calculateBrightness(r, g, b);
-
-      if (luminance > 200) {
-        if (this.isWhite(r, g, b)) {
-          r = this.clamp(luminance + value, 0, 255);
-          g = this.clamp(luminance + value, 0, 255);
-          b = this.clamp(luminance + value, 0, 255);
-        }
-      }
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-      return data;
-    });
-    return dst;
-  }
-
-  black(value: number) {
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-
-      let luminance = this.calculateBrightness(r, g, b);
-      if (luminance < 60) {
-        if (this.isBlacks(r, g, b)) {
-          r = this.clamp(luminance - value, 0, 255);
-          g = this.clamp(luminance - value, 0, 255);
-          b = this.clamp(luminance - value, 0, 255);
-        }
-      }
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
-    return dst;
+    // this.brightness(brightness, src);
+    let dst = this.contrast(contrast, src);
+    // this.contrast(contrast, src);
+    // this.temperature(temperature, src);
+    // this.hightlight(hightlight, src);
+    // this.shadow(shadow, src);
+    // this.white(white, src);
+    // this.black(black, src);
+    cv.imshow(cvsId, dst);
   }
 
   // tint
@@ -543,28 +582,6 @@ export class RGBAImage {
   }
 
   // Detail
-
-  hue(value: number) {
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-
-      let hsv = rgbToHsv(r, g, b);
-      hsv.h *= 100;
-      hsv.h += value;
-      hsv.h = hsv.h % 100;
-      hsv.h /= 100;
-      let newData = hsvToRgb(hsv.h, hsv.s, hsv.v);
-
-      data[idx] = newData.r;
-      ++idx;
-      data[idx] = newData.g;
-      ++idx;
-      data[idx] = newData.b;
-
-      return data;
-    });
-    return dst;
-  }
 
   gamma(value: number) {
     value = Math.pow(2, value / 30.5);

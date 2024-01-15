@@ -14,30 +14,38 @@ interface AdjustMainProps {
 export default function AdjustMain(props: AdjustMainProps) {
   const { cvs } = props
   const [value, setValue] = React.useState<AdjustProps>(defaultValueAdjust)
+  const [isEdit, setEdit] = React.useState<boolean>(false)
+
+  let timeOut: NodeJS.Timeout
 
   const onChange = async (name: string, newValue: number) => {
-
+    clearTimeout(timeOut)
+    setEdit(true)
     setValue((pre) => ({
       ...pre,
       [name]: newValue,
     }))
+    timeOut = setTimeout(() => {
+      setEdit(false)
+      console.log("test")
+    }, 1100)
   }
 
   useEffect(() => {
     if (cvs) {
-      const canvas = document.getElementById("canvas") as HTMLCanvasElement
-      if (canvas) {
-        let I = cvs.result
-        if (I) {
-          I.adjustOpenCV({
-            brightness: value.brightness,
-            exposure: value.exposure,
-            contrast: value.contrast,
-            temperature: value.temperature,
-            hightlight : value.hightlight,
-            cvsId : "canvas"
-          })
-        }
+      let I = cvs.result
+      if (I) {
+        I.adjustOpenCV({
+          brightness: value.brightness,
+          exposure: value.exposure,
+          contrast: -100,
+          temperature: value.temperature,
+          hightlight: value.hightlight,
+          black: value.blacks,
+          shadow: value.shadows,
+          white: value.whites,
+          cvsId: "canvas",
+        })
       }
     }
   }, [value])

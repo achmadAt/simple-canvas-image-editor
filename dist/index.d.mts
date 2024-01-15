@@ -36,20 +36,23 @@ declare class RGBAImage {
     hightlight(value: number, src: cv.Mat): cv.Mat;
     brightness(value: number, src: cv.Mat): cv.Mat;
     contrast(value: number, src: cv.Mat): cv.Mat;
+    shadow(value: number, src: cv.Mat): cv.Mat;
+    white(value: number, src: cv.Mat): cv.Mat;
+    calculateMean(numbers: number[]): number;
+    black(value: number, src: cv.Mat): cv.Mat;
     adjustOpenCV(param: {
         brightness: number;
         exposure: number;
         contrast: number;
         temperature: number;
         hightlight: number;
+        shadow: number;
+        white: number;
+        black: number;
         cvsId: string;
     }): void;
-    shadow(value: number): RGBAImage;
-    white(value: number): RGBAImage;
-    black(value: number): RGBAImage;
     tint(value: number): RGBAImage;
     saturationRGB(value: number): RGBAImage;
-    hue(value: number): RGBAImage;
     gamma(value: number): RGBAImage;
     sepia(value: number): RGBAImage;
     noise(value: number): RGBAImage;

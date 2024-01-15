@@ -426,88 +426,6 @@ var Calculate = /*#__PURE__*/ function() {
     return _Calculate;
 }();
 var calculate_default = Calculate;
-// src/lib/convert.ts
-function rgbToHsv(r, g, b) {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    var max = Math.max(r, g, b);
-    var min = Math.min(r, g, b);
-    var v = max;
-    var d = max - min;
-    var s = max === 0 ? 0 : d / max;
-    var h = 0;
-    if (max === min) {
-        h = 0;
-    } else {
-        switch(max){
-            case r:
-                h = (g - b) / d + (g < b ? 6 : 0);
-                break;
-            case g:
-                h = (b - r) / d + 2;
-                break;
-            case b:
-                h = (r - g) / d + 4;
-                break;
-        }
-        h /= 6;
-    }
-    return {
-        h: h,
-        s: s,
-        v: v
-    };
-}
-function hsvToRgb(h, s, v) {
-    var i = Math.floor(h * 6);
-    var f = h * 6 - i;
-    var p = v * (1 - s);
-    var q = v * (1 - f * s);
-    var t = v * (1 - (1 - f) * s);
-    var _ref = {
-        r: 0,
-        g: 0,
-        b: 0
-    }, r = _ref.r, g = _ref.g, b = _ref.b;
-    switch(i % 6){
-        case 0:
-            r = v;
-            g = t;
-            b = p;
-            break;
-        case 1:
-            r = q;
-            g = v;
-            b = p;
-            break;
-        case 2:
-            r = p;
-            g = v;
-            b = t;
-            break;
-        case 3:
-            r = p;
-            g = q;
-            b = v;
-            break;
-        case 4:
-            r = t;
-            g = p;
-            b = v;
-            break;
-        case 5:
-            r = v;
-            g = p;
-            b = q;
-            break;
-    }
-    return {
-        r: Math.floor(r * 255),
-        g: Math.floor(g * 255),
-        b: Math.floor(b * 255)
-    };
-}
 // src/lib/color.ts
 var import_opencv_js = __toESM(require("@techstark/opencv-js"));
 var Color = /*#__PURE__*/ function() {
@@ -809,9 +727,6 @@ var RGBAImage = /*#__PURE__*/ function() {
                         }
                     }
                 }
-                console.log({
-                    "src": src.data
-                });
                 return src;
             }
         },
@@ -855,14 +770,118 @@ var RGBAImage = /*#__PURE__*/ function() {
             key: "contrast",
             value: function contrast(value, src) {
                 var dst = new import_opencv_js.default.Mat();
-                var alpha = 1 + value / 50;
+                var alpha = 1 + value / 200;
                 var beta = 128 - alpha * 128;
                 import_opencv_js.default.convertScaleAbs(src, dst, alpha, beta);
-                for(var i = 0; i < src.rows; i++){
-                    for(var j = 0; j < src.cols; j++){
-                        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
-                        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
-                        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+                return dst;
+            }
+        },
+        {
+            key: "shadow",
+            value: function shadow(value, src) {
+                value /= 2;
+                var labImage = new import_opencv_js.default.Mat();
+                import_opencv_js.default.cvtColor(src, labImage, import_opencv_js.default.COLOR_BGR2Lab);
+                for(var i = 0; i < labImage.rows; i++){
+                    for(var j = 0; j < labImage.cols; j++){
+                        labImage.ucharPtr(i, j)[0] = Math.min(255, Math.max(0, labImage.ucharPtr(i, j)[0] + value));
+                    }
+                }
+                var dst = new import_opencv_js.default.Mat();
+                import_opencv_js.default.cvtColor(labImage, dst, import_opencv_js.default.COLOR_Lab2BGR);
+                for(var i1 = 0; i1 < src.rows; i1++){
+                    for(var j1 = 0; j1 < src.cols; j1++){
+                        src.ucharPtr(i1, j1)[0] = dst.ucharPtr(i1, j1)[0];
+                        src.ucharPtr(i1, j1)[1] = dst.ucharPtr(i1, j1)[1];
+                        src.ucharPtr(i1, j1)[2] = dst.ucharPtr(i1, j1)[2];
+                    }
+                }
+                return src;
+            }
+        },
+        {
+            key: "white",
+            value: function white(value, src) {
+                value /= 400;
+                var labImage = new import_opencv_js.default.Mat();
+                import_opencv_js.default.cvtColor(src, labImage, import_opencv_js.default.COLOR_BGR2Lab);
+                for(var i = 0; i < labImage.rows; i++){
+                    for(var j = 0; j < labImage.cols; j++){
+                        labImage.ucharPtr(i, j)[0] = Math.min(255, Math.max(0, labImage.ucharPtr(i, j)[0] * (1 + value)));
+                    }
+                }
+                var dst = new import_opencv_js.default.Mat();
+                import_opencv_js.default.cvtColor(labImage, dst, import_opencv_js.default.COLOR_Lab2BGR);
+                for(var i1 = 0; i1 < src.rows; i1++){
+                    for(var j1 = 0; j1 < src.cols; j1++){
+                        src.ucharPtr(i1, j1)[0] = dst.ucharPtr(i1, j1)[0];
+                        src.ucharPtr(i1, j1)[1] = dst.ucharPtr(i1, j1)[1];
+                        src.ucharPtr(i1, j1)[2] = dst.ucharPtr(i1, j1)[2];
+                    }
+                }
+                return src;
+            }
+        },
+        {
+            key: "calculateMean",
+            value: function calculateMean(numbers) {
+                var total = 0;
+                var _iteratorNormalCompletion = true, _didIteratorError = false, _iteratorError = undefined;
+                try {
+                    for(var _iterator = numbers[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true){
+                        var number = _step.value;
+                        total += number;
+                    }
+                } catch (err) {
+                    _didIteratorError = true;
+                    _iteratorError = err;
+                } finally{
+                    try {
+                        if (!_iteratorNormalCompletion && _iterator.return != null) {
+                            _iterator.return();
+                        }
+                    } finally{
+                        if (_didIteratorError) {
+                            throw _iteratorError;
+                        }
+                    }
+                }
+                var mean = total / numbers.length;
+                return mean;
+            }
+        },
+        {
+            key: "black",
+            value: function black(value, src) {
+                var labImage = new import_opencv_js.default.Mat();
+                import_opencv_js.default.cvtColor(src, labImage, import_opencv_js.default.COLOR_BGR2Lab);
+                var numbers = [];
+                for(var i = 0; i < labImage.rows; i++){
+                    for(var j = 0; j < labImage.cols; j++){
+                        numbers.push(labImage.ucharPtr(i, j)[0]);
+                    }
+                }
+                var threshold = this.calculateMean(numbers);
+                for(var i1 = 0; i1 < labImage.rows; i1++){
+                    for(var j1 = 0; j1 < labImage.cols; j1++){
+                        if (value > 0) {
+                            if (labImage.ucharPtr(i1, j1)[0] < threshold) {
+                                labImage.ucharPtr(i1, j1)[0] = Math.max(0, labImage.ucharPtr(i1, j1)[0] - (threshold - labImage.ucharPtr(i1, j1)[0]) * value);
+                            }
+                        } else if (value < 0) {
+                            if (labImage.ucharPtr(i1, j1)[0] < threshold) {
+                                labImage.ucharPtr(i1, j1)[0] = Math.min(255, labImage.ucharPtr(i1, j1)[0] - (threshold - labImage.ucharPtr(i1, j1)[0]) * value);
+                            }
+                        }
+                    }
+                }
+                var dst = new import_opencv_js.default.Mat();
+                import_opencv_js.default.cvtColor(labImage, dst, import_opencv_js.default.COLOR_Lab2BGR);
+                for(var i2 = 0; i2 < src.rows; i2++){
+                    for(var j2 = 0; j2 < src.cols; j2++){
+                        src.ucharPtr(i2, j2)[0] = dst.ucharPtr(i2, j2)[0];
+                        src.ucharPtr(i2, j2)[1] = dst.ucharPtr(i2, j2)[1];
+                        src.ucharPtr(i2, j2)[2] = dst.ucharPtr(i2, j2)[2];
                     }
                 }
                 return src;
@@ -871,85 +890,10 @@ var RGBAImage = /*#__PURE__*/ function() {
         {
             key: "adjustOpenCV",
             value: function adjustOpenCV(param) {
-                var brightness = param.brightness, exposure = param.exposure, contrast = param.contrast, temperature = param.temperature, hightlight = param.hightlight, cvsId = param.cvsId;
+                var brightness = param.brightness, exposure = param.exposure, contrast = param.contrast, temperature = param.temperature, hightlight = param.hightlight, shadow = param.shadow, white = param.white, black = param.black, cvsId = param.cvsId;
                 var src = import_opencv_js.default.matFromImageData(this.imageData);
-                this.brightness(brightness, src);
-                this.exposure(exposure, src);
-                this.contrast(contrast, src);
-                this.temperature(temperature, src);
-                this.hightlight(hightlight, src);
-                import_opencv_js.default.imshow(cvsId, src);
-            }
-        },
-        {
-            key: "shadow",
-            value: function shadow(value) {
-                var _this = this;
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var maxFactor = 200;
-                    var brightness = _this.calculateBrightness(r, g, b);
-                    if (brightness < maxFactor) {
-                        r = _this.clamp(r - value, 0, 255);
-                        g = _this.clamp(g - value, 0, 255);
-                        b = _this.clamp(b - value, 0, 255);
-                    }
-                    data[idx] = r;
-                    ++idx;
-                    data[idx] = g;
-                    ++idx;
-                    data[idx] = b;
-                    return data;
-                });
-                return dst;
-            }
-        },
-        {
-            key: "white",
-            value: function white(value) {
-                var _this = this;
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var luminance = _this.calculateBrightness(r, g, b);
-                    if (luminance > 200) {
-                        if (_this.isWhite(r, g, b)) {
-                            r = _this.clamp(luminance + value, 0, 255);
-                            g = _this.clamp(luminance + value, 0, 255);
-                            b = _this.clamp(luminance + value, 0, 255);
-                        }
-                    }
-                    data[idx] = r;
-                    ++idx;
-                    data[idx] = g;
-                    ++idx;
-                    data[idx] = b;
-                    return data;
-                });
-                return dst;
-            }
-        },
-        {
-            key: "black",
-            value: function black(value) {
-                var _this = this;
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var luminance = _this.calculateBrightness(r, g, b);
-                    if (luminance < 60) {
-                        if (_this.isBlacks(r, g, b)) {
-                            r = _this.clamp(luminance - value, 0, 255);
-                            g = _this.clamp(luminance - value, 0, 255);
-                            b = _this.clamp(luminance - value, 0, 255);
-                        }
-                    }
-                    data[idx] = r;
-                    ++idx;
-                    data[idx] = g;
-                    ++idx;
-                    data[idx] = b;
-                    return data;
-                });
-                return dst;
+                var dst = this.exposure(exposure, src);
+                import_opencv_js.default.imshow(cvsId, dst);
             }
         },
         {
@@ -998,28 +942,6 @@ var RGBAImage = /*#__PURE__*/ function() {
         },
         {
             // Detail
-            key: "hue",
-            value: function hue(value) {
-                var _this = this;
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var hsv = rgbToHsv(r, g, b);
-                    hsv.h *= 100;
-                    hsv.h += value;
-                    hsv.h = hsv.h % 100;
-                    hsv.h /= 100;
-                    var newData = hsvToRgb(hsv.h, hsv.s, hsv.v);
-                    data[idx] = newData.r;
-                    ++idx;
-                    data[idx] = newData.g;
-                    ++idx;
-                    data[idx] = newData.b;
-                    return data;
-                });
-                return dst;
-            }
-        },
-        {
             key: "gamma",
             value: function gamma(value) {
                 var _this = this;
