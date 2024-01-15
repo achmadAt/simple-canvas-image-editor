@@ -564,7 +564,14 @@ var RGBAImage = class _RGBAImage {
     let alpha = 1 + value / 200;
     let beta = 128 - alpha * 128;
     cv.convertScaleAbs(src, dst, alpha, beta);
-    return dst;
+    for (let i = 0; i < src.rows; i++) {
+      for (let j = 0; j < src.cols; j++) {
+        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+      }
+    }
+    return src;
   }
   shadow(value, src) {
     value /= 2;
@@ -673,8 +680,8 @@ var RGBAImage = class _RGBAImage {
       cvsId
     } = param;
     let src = cv.matFromImageData(this.imageData);
-    let dst = this.exposure(exposure, src);
-    cv.imshow(cvsId, dst);
+    this.contrast(contrast, src);
+    cv.imshow(cvsId, src);
   }
   // tint
   tint(value) {

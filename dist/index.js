@@ -773,7 +773,14 @@ var RGBAImage = /*#__PURE__*/ function() {
                 var alpha = 1 + value / 200;
                 var beta = 128 - alpha * 128;
                 import_opencv_js.default.convertScaleAbs(src, dst, alpha, beta);
-                return dst;
+                for(var i = 0; i < src.rows; i++){
+                    for(var j = 0; j < src.cols; j++){
+                        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+                        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+                        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+                    }
+                }
+                return src;
             }
         },
         {
@@ -892,8 +899,8 @@ var RGBAImage = /*#__PURE__*/ function() {
             value: function adjustOpenCV(param) {
                 var brightness = param.brightness, exposure = param.exposure, contrast = param.contrast, temperature = param.temperature, hightlight = param.hightlight, shadow = param.shadow, white = param.white, black = param.black, cvsId = param.cvsId;
                 var src = import_opencv_js.default.matFromImageData(this.imageData);
-                var dst = this.exposure(exposure, src);
-                import_opencv_js.default.imshow(cvsId, dst);
+                this.contrast(contrast, src);
+                import_opencv_js.default.imshow(cvsId, src);
             }
         },
         {

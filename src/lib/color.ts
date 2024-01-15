@@ -393,7 +393,14 @@ export class RGBAImage {
     let alpha = 1 + value / 200;
     let beta = 128 - alpha * 128;
     cv.convertScaleAbs(src, dst, alpha, beta);
-    return dst;
+    for (let i = 0; i < src.rows; i++) {
+      for (let j = 0; j < src.cols; j++) {
+        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+      }
+    }
+    return src;
   }
 
   shadow(value: number, src: cv.Mat) {
@@ -526,14 +533,14 @@ export class RGBAImage {
     } = param;
     let src = cv.matFromImageData(this.imageData);
     // this.brightness(brightness, src);
-    let dst = this.contrast(contrast, src);
+    this.contrast(contrast, src);
     // this.contrast(contrast, src);
     // this.temperature(temperature, src);
     // this.hightlight(hightlight, src);
     // this.shadow(shadow, src);
     // this.white(white, src);
-    // this.black(black, src);
-    cv.imshow(cvsId, dst);
+    // this.black(black, src)
+    cv.imshow(cvsId, src);
   }
 
   // tint
