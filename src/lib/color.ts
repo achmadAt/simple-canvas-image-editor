@@ -137,8 +137,6 @@ export class RGBAImage {
     return dst;
   }
 
-  
-
   resize(w: number, h: number): RGBAImage {
     const iw = this.w;
     const ih = this.h;
@@ -192,17 +190,16 @@ export class RGBAImage {
 
   copyMat(src: cv.Mat, dst: cv.Mat) {
     for (let i = 0; i < src.rows; i++) {
-        for (let j = 0; j < src.cols; j++) {
-            // for (let k = 0; k < src.channels(); k++) {
-            //     dst.ucharPtr(i, j)[k] = src.ucharPtr(i, j)[k];
-            // }
-            dst.ucharPtr(i, j)[0] = src.ucharPtr(i, j)[0];
-            dst.ucharPtr(i, j)[1] = src.ucharPtr(i, j)[1];
-            dst.ucharPtr(i, j)[2] = src.ucharPtr(i, j)[2];
-        }
+      for (let j = 0; j < src.cols; j++) {
+        // for (let k = 0; k < src.channels(); k++) {
+        //     dst.ucharPtr(i, j)[k] = src.ucharPtr(i, j)[k];
+        // }
+        dst.ucharPtr(i, j)[0] = src.ucharPtr(i, j)[0];
+        dst.ucharPtr(i, j)[1] = src.ucharPtr(i, j)[1];
+        dst.ucharPtr(i, j)[2] = src.ucharPtr(i, j)[2];
+      }
     }
-}
-
+  }
 
   toImageData(ctx: CanvasRenderingContext2D): ImageData {
     const imgData = ctx.createImageData(this.w, this.h);
@@ -210,9 +207,7 @@ export class RGBAImage {
     return imgData;
   }
 
-
   //image adjustment filter
-
 
   exposureWeighted(value: number, src: cv.Mat) {
     let dst = new cv.Mat();
@@ -227,8 +222,8 @@ export class RGBAImage {
     //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
     //   }
     // }
-    this.copyMat(dst, src)
-    return src
+    this.copyMat(dst, src);
+    return src;
   }
   //temperature
   temperature(value: number, src: cv.Mat) {
@@ -289,7 +284,7 @@ export class RGBAImage {
     //     src.ucharPtr(i, j)[2] = bgr.ucharPtr(i, j)[2];
     //   }
     // }
-    this.copyMat(bgr, src)
+    this.copyMat(bgr, src);
     return src;
   }
 
@@ -324,7 +319,7 @@ export class RGBAImage {
     //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
     //   }
     // }
-    this.copyMat(dst, src)
+    this.copyMat(dst, src);
     return src;
   }
 
@@ -349,7 +344,7 @@ export class RGBAImage {
     //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
     //   }
     // }
-    this.copyMat(dst, src)
+    this.copyMat(dst, src);
     return src;
   }
 
@@ -374,7 +369,7 @@ export class RGBAImage {
     //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
     //   }
     // }
-    this.copyMat(dst, src)
+    this.copyMat(dst, src);
     return src;
   }
   calculateMean(numbers: number[]): number {
@@ -433,42 +428,58 @@ export class RGBAImage {
     //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
     //   }
     // }
-    this.copyMat(dst, src)
+    this.copyMat(dst, src);
     return src;
   }
 
-  saturationRGB(value: number) {
-    const saturationCorrection = value * -0.01;
-
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-
-      const max = Math.max(r, g, b);
-      if (r !== max) r += (max - r) * saturationCorrection;
-      if (g !== max) g += (max - g) * saturationCorrection;
-      if (b !== max) b += (max - b) * saturationCorrection;
-
-      r = Math.min(255, Math.max(0, r));
-      g = Math.min(255, Math.max(0, g));
-      b = Math.min(255, Math.max(0, b));
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
-    return dst;
+  saturationRGB(value: number, src: cv.Mat) {
+    let hsvImage = new cv.Mat();
+    cv.cvtColor(src, hsvImage, cv.COLOR_BGR2HSV);
+    // Loop through each pixel and adjust the saturation channel
+    for (let i = 0; i < hsvImage.rows; i++) {
+      for (let j = 0; j < hsvImage.cols; j++) {
+        hsvImage.ucharPtr(i, j)[1] = Math.max(
+          0,
+          Math.min(255, hsvImage.ucharPtr(i, j)[1] * (1 + value))
+        );
+      }
+    }
+    let dst = new cv.Mat();
+    cv.cvtColor(hsvImage, dst, cv.COLOR_HSV2BGR);
+    this.copyMat(dst, src)
   }
 
+  clarity(value: number, src: cv.Mat) {
+    let lab = new cv.Mat();
+    cv.cvtColor(src, lab, cv.COLOR_BGR2Lab);
 
-  clarity(value: number) {
+    //use this because encountering type error when used in cv.addWeighted
+    let src2 = new cv.Mat();
+    cv.cvtColor(lab, src2, cv.COLOR_Lab2BGR);
+    // split the channels
+    let channels = new cv.MatVector();
+    cv.split(lab, channels);
+    let clahe = new cv.CLAHE(2.0);
+    clahe.apply(channels.get(0), channels.get(0));
+    cv.merge(channels, lab);
+    let bgr = new cv.Mat();
+    cv.cvtColor(lab, bgr, cv.COLOR_Lab2BGR);
+    let dst = new cv.Mat();
+    // console.log(src.rows, src.cols, src2.type());
+    // console.log(bgr.rows, bgr.cols, bgr.type());
+    cv.addWeighted(src2, 1 - value, bgr, value, 0, dst);
+    this.copyMat(dst, src)
   }
-  sharpness(value: number) {
+  sharpness(value: number, src: cv.Mat) {
+    let gaussianBlur = new cv.Mat();
+    let kernelSize = new cv.Size(5, 5);
+    cv.GaussianBlur(src, gaussianBlur, kernelSize, 0, 0, cv.BORDER_DEFAULT);
+    let _sharpened = new cv.Mat();
+    cv.addWeighted(src, 1.5, gaussianBlur, -0.5, 0, _sharpened);
+    let dst = new cv.Mat();
+    cv.addWeighted(src, 1 - value, _sharpened, value, 0, dst);
+    this.copyMat(dst, src)
   }
-
 
   adjustOpenCV(param: {
     brightness: number;
@@ -479,6 +490,9 @@ export class RGBAImage {
     shadow: number;
     white: number;
     black: number;
+    saturation: number;
+    clarity: number;
+    sharpness: number;
     cvsId: string;
   }) {
     const {
@@ -490,17 +504,19 @@ export class RGBAImage {
       shadow,
       white,
       black,
+      saturation,
+      clarity,
+      sharpness,
       cvsId,
     } = param;
     let src = cv.matFromImageData(this.imageData);
-    // this.brightness(brightness, src);
+    this.brightness(brightness, src);
     this.contrast(contrast, src);
-    // this.contrast(contrast, src);
-    // this.temperature(temperature, src);
-    // this.hightlight(hightlight, src);
-    // this.shadow(shadow, src);
-    // this.white(white, src);
-    // this.black(black, src)
+    this.temperature(temperature, src);
+    this.hightlight(hightlight, src);
+    this.shadow(shadow, src);
+    this.white(white, src);
+    this.black(black, src)
     cv.imshow(cvsId, src);
   }
 
@@ -523,8 +539,6 @@ export class RGBAImage {
     return dst;
   }
 
-
- 
   render(cvs: HTMLCanvasElement) {
     // eslint-disable-next-line no-param-reassign
     cvs.width = this.w;
