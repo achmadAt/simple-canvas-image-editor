@@ -55,6 +55,8 @@
     "react"
   ],
   "dependencies": {
-    "@techstark/opencv-js": "^4.8.0-release.10"
+    "@techstark/opencv-js": "^4.8.0-release.10",
+    "as-bind": "^0.8.2",
+    "opencv-wasm": "^4.3.0-10"
   }
 }

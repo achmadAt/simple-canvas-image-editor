@@ -69,6 +69,7 @@ export class RGBAImage {
     }
   }
 
+  //Utility
   getPixel(x: number, y: number): Color {
     const idx = (y * this.w + x) * 4;
     return new Color(
@@ -136,88 +137,7 @@ export class RGBAImage {
     return dst;
   }
 
-  convolution(kernel: number[][]) {
-    const kRows: number = kernel.length;
-    const kCols: number = kernel[0].length;
-    const rowEnd: number = Math.floor(kRows / 2);
-    const colEnd: number = Math.floor(kCols / 2);
-    const rowIni: number = -rowEnd;
-    const colIni: number = -colEnd;
-    const width: number = this.w;
-    const height: number = this.h;
-
-    let weight: number;
-    let rSum: number;
-    let gSum: number;
-    let bSum: number;
-    let ri: number;
-    let gi: number;
-    let bi: number;
-    let xi: number;
-    let yi: number;
-    let idxi: number;
-
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      const pixel: number = (y * width + x) * 4;
-      bSum = 0;
-      gSum = 0;
-      rSum = 0;
-
-      for (let row: number = rowIni; row <= rowEnd; row++) {
-        for (let col: number = colIni; col <= colEnd; col++) {
-          xi = x + col;
-          yi = y + row;
-          weight = kernel[row + rowEnd][col + colEnd];
-          idxi = Calculate.getPixelIndex(xi, yi, width, height);
-
-          if (idxi === -1) {
-            bi = 0;
-            gi = 0;
-            ri = 0;
-          } else {
-            ri = this.data[idxi + 0];
-            gi = this.data[idxi + 1];
-            bi = this.data[idxi + 2];
-          }
-
-          rSum += weight * ri;
-          gSum += weight * gi;
-          bSum += weight * bi;
-        }
-      }
-
-      if (rSum < 0) {
-        rSum = 0;
-      }
-
-      if (gSum < 0) {
-        gSum = 0;
-      }
-
-      if (bSum < 0) {
-        bSum = 0;
-      }
-
-      if (rSum > 255) {
-        rSum = 255;
-      }
-
-      if (gSum > 255) {
-        gSum = 255;
-      }
-
-      if (bSum > 255) {
-        bSum = 255;
-      }
-
-      data[pixel + 0] = rSum;
-      data[pixel + 1] = gSum;
-      data[pixel + 2] = bSum;
-
-      return data;
-    });
-    return dst;
-  }
+  
 
   resize(w: number, h: number): RGBAImage {
     const iw = this.w;
@@ -270,43 +190,46 @@ export class RGBAImage {
     );
   }
 
+  copyMat(src: cv.Mat, dst: cv.Mat) {
+    for (let i = 0; i < src.rows; i++) {
+        for (let j = 0; j < src.cols; j++) {
+            // for (let k = 0; k < src.channels(); k++) {
+            //     dst.ucharPtr(i, j)[k] = src.ucharPtr(i, j)[k];
+            // }
+            dst.ucharPtr(i, j)[0] = src.ucharPtr(i, j)[0];
+            dst.ucharPtr(i, j)[1] = src.ucharPtr(i, j)[1];
+            dst.ucharPtr(i, j)[2] = src.ucharPtr(i, j)[2];
+        }
+    }
+}
+
+
   toImageData(ctx: CanvasRenderingContext2D): ImageData {
     const imgData = ctx.createImageData(this.w, this.h);
     imgData.data.set(this.data);
     return imgData;
   }
 
-  // utility
-
-  calculateBrightness(r: number, g: number, b: number) {
-    //  Calculate brightness as the weighted sum of color channels
-    let brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-    return brightness;
-  }
-
-  clamp = (num: number, min: number, max: number) =>
-    Math.min(Math.max(num, min), max);
-
-  isWhite(r: number, g: number, b: number) {
-    const treshold = 200;
-    if (r >= treshold && g >= treshold && b >= treshold) {
-      return true;
-    }
-
-    return false;
-  }
-
-  isBlacks(r: number, g: number, b: number) {
-    const treshold = 60;
-    if (r <= treshold && g <= treshold && b <= treshold) {
-      return true;
-    }
-
-    return false;
-  }
 
   //image adjustment filter
 
+
+  exposureWeighted(value: number, src: cv.Mat) {
+    let dst = new cv.Mat();
+    let src2 = new cv.Mat(src.rows, src.cols, src.type());
+    let beta = 0;
+    let gamma = value / 2;
+    cv.addWeighted(src, 1, src2, beta, gamma, dst);
+    // for (let i = 0; i < src.rows; i++) {
+    //   for (let j = 0; j < src.cols; j++) {
+    //     src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+    //     src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+    //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+    //   }
+    // }
+    this.copyMat(dst, src)
+    return src
+  }
   //temperature
   temperature(value: number, src: cv.Mat) {
     value /= 2;
@@ -359,13 +282,14 @@ export class RGBAImage {
     }
     let bgr = new cv.Mat();
     cv.cvtColor(labImage, bgr, cv.COLOR_Lab2BGR);
-    for (let i = 0; i < src.rows; i++) {
-      for (let j = 0; j < src.cols; j++) {
-        src.ucharPtr(i, j)[0] = bgr.ucharPtr(i, j)[0];
-        src.ucharPtr(i, j)[1] = bgr.ucharPtr(i, j)[1];
-        src.ucharPtr(i, j)[2] = bgr.ucharPtr(i, j)[2];
-      }
-    }
+    // for (let i = 0; i < src.rows; i++) {
+    //   for (let j = 0; j < src.cols; j++) {
+    //     src.ucharPtr(i, j)[0] = bgr.ucharPtr(i, j)[0];
+    //     src.ucharPtr(i, j)[1] = bgr.ucharPtr(i, j)[1];
+    //     src.ucharPtr(i, j)[2] = bgr.ucharPtr(i, j)[2];
+    //   }
+    // }
+    this.copyMat(bgr, src)
     return src;
   }
 
@@ -393,13 +317,14 @@ export class RGBAImage {
     let alpha = 1 + value / 200;
     let beta = 128 - alpha * 128;
     cv.convertScaleAbs(src, dst, alpha, beta);
-    for (let i = 0; i < src.rows; i++) {
-      for (let j = 0; j < src.cols; j++) {
-        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
-        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
-        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
-      }
-    }
+    // for (let i = 0; i < src.rows; i++) {
+    //   for (let j = 0; j < src.cols; j++) {
+    //     src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+    //     src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+    //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+    //   }
+    // }
+    this.copyMat(dst, src)
     return src;
   }
 
@@ -417,13 +342,14 @@ export class RGBAImage {
     }
     let dst = new cv.Mat();
     cv.cvtColor(labImage, dst, cv.COLOR_Lab2BGR);
-    for (let i = 0; i < src.rows; i++) {
-      for (let j = 0; j < src.cols; j++) {
-        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
-        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
-        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
-      }
-    }
+    // for (let i = 0; i < src.rows; i++) {
+    //   for (let j = 0; j < src.cols; j++) {
+    //     src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+    //     src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+    //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+    //   }
+    // }
+    this.copyMat(dst, src)
     return src;
   }
 
@@ -441,13 +367,14 @@ export class RGBAImage {
     }
     let dst = new cv.Mat();
     cv.cvtColor(labImage, dst, cv.COLOR_Lab2BGR);
-    for (let i = 0; i < src.rows; i++) {
-      for (let j = 0; j < src.cols; j++) {
-        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
-        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
-        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
-      }
-    }
+    // for (let i = 0; i < src.rows; i++) {
+    //   for (let j = 0; j < src.cols; j++) {
+    //     src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+    //     src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+    //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+    //   }
+    // }
+    this.copyMat(dst, src)
     return src;
   }
   calculateMean(numbers: number[]): number {
@@ -499,15 +426,49 @@ export class RGBAImage {
     }
     let dst = new cv.Mat();
     cv.cvtColor(labImage, dst, cv.COLOR_Lab2BGR);
-    for (let i = 0; i < src.rows; i++) {
-      for (let j = 0; j < src.cols; j++) {
-        src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
-        src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
-        src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
-      }
-    }
+    // for (let i = 0; i < src.rows; i++) {
+    //   for (let j = 0; j < src.cols; j++) {
+    //     src.ucharPtr(i, j)[0] = dst.ucharPtr(i, j)[0];
+    //     src.ucharPtr(i, j)[1] = dst.ucharPtr(i, j)[1];
+    //     src.ucharPtr(i, j)[2] = dst.ucharPtr(i, j)[2];
+    //   }
+    // }
+    this.copyMat(dst, src)
     return src;
   }
+
+  saturationRGB(value: number) {
+    const saturationCorrection = value * -0.01;
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      const max = Math.max(r, g, b);
+      if (r !== max) r += (max - r) * saturationCorrection;
+      if (g !== max) g += (max - g) * saturationCorrection;
+      if (b !== max) b += (max - b) * saturationCorrection;
+
+      r = Math.min(255, Math.max(0, r));
+      g = Math.min(255, Math.max(0, g));
+      b = Math.min(255, Math.max(0, b));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+
+  clarity(value: number) {
+  }
+  sharpness(value: number) {
+  }
+
 
   adjustOpenCV(param: {
     brightness: number;
@@ -562,249 +523,8 @@ export class RGBAImage {
     return dst;
   }
 
-  saturationRGB(value: number) {
-    const saturationCorrection = value * -0.01;
 
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-
-      const max = Math.max(r, g, b);
-      if (r !== max) r += (max - r) * saturationCorrection;
-      if (g !== max) g += (max - g) * saturationCorrection;
-      if (b !== max) b += (max - b) * saturationCorrection;
-
-      r = Math.min(255, Math.max(0, r));
-      g = Math.min(255, Math.max(0, g));
-      b = Math.min(255, Math.max(0, b));
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
-    return dst;
-  }
-
-  // Detail
-
-  gamma(value: number) {
-    value = Math.pow(2, value / 30.5);
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-
-      // Apply gamma adjustment to each color channel
-      r = Math.pow(r / 255, value) * 255;
-      g = Math.pow(g / 255, value) * 255;
-      b = Math.pow(b / 255, value) * 255;
-
-      // Ensure the color values stay within the 0-255 range
-      r = Math.min(255, Math.max(0, r));
-      g = Math.min(255, Math.max(0, g));
-      b = Math.min(255, Math.max(0, b));
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
-    return dst;
-  }
-
-  //value between 0 - 100
-  sepia(value: number) {
-    const normalizedvalue = value / 100;
-
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-
-      // Apply sepia tone effect to the RGB values
-      r = Math.min(
-        255,
-        r * (1 - 0.607 * normalizedvalue) +
-          g * (0.769 * normalizedvalue) +
-          b * (0.189 * normalizedvalue),
-      );
-      g = Math.min(
-        255,
-        r * (0.349 * normalizedvalue) +
-          g * (1 - 0.314 * normalizedvalue) +
-          b * (0.168 * normalizedvalue),
-      );
-      b = Math.min(
-        255,
-        r * (0.272 * normalizedvalue) +
-          g * (0.534 * normalizedvalue) +
-          b * (1 - 0.869 * normalizedvalue),
-      );
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
-    return dst;
-  }
-
-  //value 0 - 100
-  noise(value: number) {
-    const adjust = Math.abs(value) * 2.55;
-
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-
-      // Generate random noise within the specified range for each channel
-      const rand = Calculate.randomRange(adjust * -1, adjust);
-
-      // Apply noise to each color channel
-      r += rand;
-      g += rand;
-      b += rand;
-
-      // Ensure the color values stay within the 0-255 range
-      r = Math.min(255, Math.max(0, r));
-      g = Math.min(255, Math.max(0, g));
-      b = Math.min(255, Math.max(0, b));
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
-    return dst;
-  }
-
-  //value between 0 - 100
-  clip(value: number) {
-    const adjust = Math.abs(value) * 2.55;
-
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-      // Clip the color values based on the adjustment factor
-      if (r > 255 - adjust) {
-        r = 255;
-      } else if (r < adjust) {
-        r = 0;
-      }
-
-      if (g > 255 - adjust) {
-        g = 255;
-      } else if (g < adjust) {
-        g = 0;
-      }
-
-      if (b > 255 - adjust) {
-        b = 255;
-      } else if (b < adjust) {
-        b = 0;
-      }
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
-    return dst;
-  }
-
-  clarity(value: number) {
-    let clarityKernel: number[][];
-    value /= 80;
-    if (value === 0) {
-      // If the value is 0, no change to the image
-      clarityKernel = [
-        [0, 0, 0],
-        [0, 1, 0],
-        [0, 0, 0],
-      ];
-    } else if (value > 0) {
-      // If the value is positive, apply clarity
-      clarityKernel = [
-        [0, -0.5, 0 + Math.abs(value) / 5],
-        [-0.5 + Math.abs(value) / 50, 2.9, -0.5 + Math.abs(value) / 50],
-        [0, -0.5, 0],
-      ];
-    } else {
-      // If the value is negative, apply smoothing (blurring)
-      clarityKernel = [
-        [0.1, 0.1, 0.1],
-        [0.1, 0.19 + Math.abs(value) / 50, 0.1],
-        [0.1, 0.1, 0.1],
-      ];
-    }
-
-    const dst = this.convolution(clarityKernel);
-    return dst;
-  }
-  sharpness(value: number) {
-    let sharpenKernel: number[][];
-    switch (true) {
-      case value < -10:
-        // If the value is minus, apply blurring
-        sharpenKernel = [
-          [1 / 9, 1 / 9, 1 / 9],
-          [1 / 9, 1 / 9, 1 / 9],
-          [1 / 9, 1 / 9, 1 / 9],
-        ];
-        break;
-      case value < -20:
-        sharpenKernel = [
-          [1 / 8, 1 / 4, 1 / 8],
-          [1 / 4, 1 / 2, 1 / 4],
-          [1 / 8, 1 / 4, 1 / 8],
-        ];
-        break;
-      case value > 0 && value <= 30:
-        // If the value is positive, apply sharpening
-        sharpenKernel = [
-          [0, -0.5, 0],
-          [-0.5, 3, -0.5],
-          [0, -0.5, 0],
-        ];
-        break;
-      case value > 30 && value <= 70:
-        sharpenKernel = [
-          [0, -1, 0],
-          [-1, 5, -1],
-          [0, -1, 0],
-        ];
-        break;
-      case value > 70:
-        sharpenKernel = [
-          [-1, -1, -1],
-          [-1, 9, -1],
-          [-1, -1, -1],
-        ];
-        break;
-      default:
-        // If the value is negative, apply smoothing (blurring)
-        sharpenKernel = [
-          [0, 0, 0],
-          [0, 1, 0],
-          [0, 0, 0],
-        ];
-        break;
-    }
-
-    let dst: RGBAImage = this.convolution(sharpenKernel);
-
-    return dst;
-  }
-
+ 
   render(cvs: HTMLCanvasElement) {
     // eslint-disable-next-line no-param-reassign
     cvs.width = this.w;

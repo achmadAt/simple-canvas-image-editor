@@ -1,0 +1,2 @@
+- search how to use wasm in react with vite or webpack
+- debug error opencv.js:771  sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)
